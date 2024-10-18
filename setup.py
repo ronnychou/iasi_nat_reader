@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="iasi_nat_reader",
-    version="0.1.0",
+    version="0.1.1",
     description="A library to read native IASI L1C, L2, and PC files",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -13,6 +13,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "numpy>=1.26.4",
+        "h5py>=3.11.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

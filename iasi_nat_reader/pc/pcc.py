@@ -19,33 +19,42 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 New features made by ronglian zhou <961836102@qq.com> on <2024/10/17>:
 - Added support to read IASI PCC products
+
+Modifications made by ronglian zhou <961836102@qq.com> on <2024/10/18>:
+- Uploaded eigenvector files to `data` directory which are necessary
+  for reading PC products (now only support products from MetOp B/C)
 """
 
+import os
 import sys
+from importlib.resources import path
 import traceback
-import gc
 import numpy as np
-import h5py
+from h5py import File
 
 from .records.giadr import GIADR
 
 class PCC:
-    def __init__(self, eig_dir, giadr:GIADR) -> None:
+    def __init__(self, giadr: GIADR, eig_dir: os.PathLike | None = None) -> None:
         self.get_eig(eig_dir)
         self.giadr = giadr
         self.fc = self.giadr.FirstChannel
         self.sqf = self.giadr.ScoreQuantisationFactor
         self.rqf = self.giadr.ResidualQuantisationFactor
     
-    def get_eig(self, eig_dir):
-        path = eig_dir
+    def get_eig(self, eig_dir: os.PathLike | None):
+        # if eig_dir is None:
+        #     eig_dir = Path(__file__).joinpath('..','..').resolve().joinpath('data')
         self.eig_val = []
-        self.eig_vec:list[np.ndarray] = []
+        self.eig_vec: list[np.ndarray] = []
         mean = []
         nedr = []
         for i in range(1,4):
-            fn = path + rf'\IASI_EV{i}_xx_Mxx'
-            f = h5py.File(fn)
+            if eig_dir is None:
+                fn = path('iasi_nat_reader.data', f'IASI_EV{i}_xx_Mxx')
+            else:
+                fn = os.path.join(eig_dir, f'IASI_EV{i}_xx_Mxx')
+            f = File(fn)
             self.eig_val.append(f['Eigenvalues'][:])
             self.eig_vec.append(f['Eigenvectors'][:])
             mean.append(f['Mean'][:])
@@ -53,7 +62,7 @@ class PCC:
         self.mean = np.concatenate(mean)
         self.nedr = np.concatenate(nedr)
         
-    def reconstruct_frompcs(self, pcscores:list[np.ndarray]|np.ndarray):
+    def reconstruct_frompcs(self, pcscores: list[np.ndarray]|np.ndarray):
         if isinstance(pcscores, np.ndarray):
             assert pcscores.shape[-1] == 300
             _pcscores = [pcscores[:,:90], pcscores[:,90:-90], pcscores[:,-90:]]
@@ -67,6 +76,7 @@ class PCC:
             ], axis=-1)
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            # to clear frames in Jupyter mode
             traceback.clear_frames(exc_traceback)
             # rad_pc = None
             # gc.collect()
@@ -74,7 +84,7 @@ class PCC:
         rad_pc = self.nedr * rad_pc * 1e5
         return rad_pc
     
-    def reconstruct_add_residual_frompcr(self, pcscores:list[np.ndarray]|np.ndarray, residual:np.ndarray):
+    def reconstruct_add_residual_frompcr(self, pcscores: list[np.ndarray] | np.ndarray, residual: np.ndarray):
         fc = self.fc
         try:
             rad_pc = self.reconstruct_frompcs(pcscores) - np.concatenate([
@@ -84,13 +94,14 @@ class PCC:
             ], axis=-1) * self.nedr * 1e5
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            # to clear frames in Jupyter mode
             traceback.clear_frames(exc_traceback)
             # rad_pc = None
             # gc.collect()
             raise
         return rad_pc
 
-    def compress_topcs(self, rad_l1c:np.ndarray):
+    def compress_topcs(self, rad_l1c: np.ndarray):
         fc = self.fc
         eig_vec = self.eig_vec
         sqf = self.sqf
@@ -103,7 +114,7 @@ class PCC:
         PcScoresB3 = np.round(tmp[...,fc[2]:] @ eig_vec[2].T / sqf[2]).astype(int)
         return [PcScoresB1, PcScoresB2, PcScoresB3]
     
-    def get_residual(self, rad_l1c, PcScores:list):
+    def get_residual(self, rad_l1c: np.ndarray, PcScores: list):
         mean = self.mean
         nedr = self.nedr
         sqf = self.sqf

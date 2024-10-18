@@ -18,7 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 New features made by ronglian zhou <961836102@qq.com> on <2024/10/17>:
-- Added support to read IASI PCC products
+- Added support to read IASI PC products
 """
 
 from typing import IO
@@ -168,7 +168,7 @@ class GIADR(interpreted_content):
         return giadr
 
     def __str__(self):
-        output = "========== IASI PC GIADR ==========\n"
+        output = "========== IASI PCC GIADR ==========\n"
         output += "NbrScoresBand1_Part1 = " + str(self.NbrScoresBand1_Part1) + "\n"
         output += "NbrScoresBand1_Part2 = " + str(self.NbrScoresBand1_Part2) + "\n"
         output += "NbrScoresBand1_Part3 = " + str(self.NbrScoresBand1_Part3) + "\n"
